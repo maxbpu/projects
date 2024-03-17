@@ -1,0 +1,334 @@
+<html>
+    <head>
+        <title>Todo App</title>
+        <style>
+            .hidden {
+                display: none;
+            }
+            h2 {
+                padding-top: 20px;
+                font-style: italic;
+            }
+            ul {
+                list-style: none;
+                padding: 0;
+                margin: 0;
+                width: 250px; /* change from 200px */
+            }
+            input[type="text"] {
+                height: 20px;
+                padding-left: 5px;
+                font-size: 15px;
+                border: 1px solid silver;
+                border-radius: 2px;
+                background-color: transparent;
+            }
+            input[type="submit"] {
+                height: 20px;
+                border: 1px solid silver;
+                border-radius: 2px;
+                background-color: whitesmoke;
+            }
+            li {
+                clear: both;
+            }
+            li button {
+                /* -webkit-appearance: none; */
+                border: none;
+                outline: none;
+                color: red;
+                background-color: transparent; /* previously auto set at gray */
+                float: right;
+                cursor: pointer;
+                font-size: 20px;
+            }
+            .lists-wrapper, .todos-wrapper {
+                padding-right: 20px;
+                display: inline-block;
+                vertical-align: top;
+            }
+            a:link, a:visited {
+                color: black;
+            }
+
+        </style>
+    </head>
+    <body>
+        <h2>A Simple Version Of To-Do App</h2>
+
+        <div class="lists-wrapper">
+            <h3>TODO LISTS</h3>
+            <form id="form-lists">
+                <label for="name">Create List:</label>
+                <input type="text" id="name" name="name" />
+                <input type="submit" value="Create List" />
+            </form>
+            <div id="error" class="hidden">Something went wrong!</div>
+            <ul id="lists">
+                {% for list in lists %}
+                <li>
+                    <input class="check-completed-lists" data-id="{{ list.id }}" type="checkbox" unchecked />
+                    <a href="/lists/{{ list.id }}">{{ list.name }}</a>
+                    <button class="delete-button-lists" data-id="{{ list.id }}">&#10008;</button>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+
+        <div class="todos-wrapper">
+            <h3>TODO ITEMS</h3>
+            <form id="form-items"> 
+                <input id="list_id" type="hidden" value="{{ active_list.id }}"> 
+                <label for="description">Create Task:</label>
+                <input type="text" id="description" name="description" /> 
+                <input type="submit" value="Create Task" />
+            </form>
+            <h3>{{ active_list.name }}</h3>
+            <div id="error" class="hidden">Something went wrong!</div> 
+            <ul id="todos">
+                {% for todo in todos %}
+                <li>
+                    <input class="check-completed-items" data-id="{{ todo.id }}" type="checkbox" {% if todo.completed %} checked {% endif %} />
+                    {{ todo.description }}
+                    <button class="delete-button-items" data-id="{{ todo.id }}">&#10008;</button>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+
+
+        <script> 
+
+            // event handler for the LIST complete checkbox
+            async function listCheckCompletedHandler(e) {
+                // TODO
+                console.log('event', e);
+                const listId = e.target.dataset['id'];
+                console.log(listId);
+                fetch('/lists/' + listId + '/set-completed', { 
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(function() {
+                    console.log("fetch completed");
+                    window.location.reload(true);
+                    document.getElementById('error').className = 'hidden';
+                })
+                .catch(function() {
+                    document.getElementById('error').className = ''; 
+                })
+            }
+
+            // event handler for the LIST delete button
+            async function listDeleteButtonHandler(e) {
+                console.log('event', e);
+                const listId = e.target.dataset['id'];
+                console.log(listId);
+                fetch('/lists/' + listId + '/delete', {
+                    method: 'DELETE'
+                })
+                .then(function() {
+                    const item = e.target.parentElement; // parentElement would be an item in the list
+                    item.remove(); // remove the HTML element
+                    window.location.href = '/';
+                    document.getElementById('error').className = 'hidden';
+                })
+                .catch(function() {
+                    document.getElementById('error').className = ''; 
+                })
+            }
+
+            // event handler for the ITEM complete checkbox
+            async function itemCheckCompletedHandler(e) {
+                console.log('event', e);
+                const newCompleted = e.target.checked; 
+                const todoId = e.target.dataset['id']
+                fetch('/todos/' + todoId + '/set-completed', { 
+                    method: 'POST',
+                    body: JSON.stringify({
+                        'completed': newCompleted
+                    }),
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(function() {
+                    document.getElementById('error').className = 'hidden';
+                })
+                .catch(function() {
+                    document.getElementById('error').className = ''; 
+                })
+            }
+
+            // event handler for the ITEM delete button
+            async function itemDeleteButtonHandler(e) {
+                console.log('event', e);
+                const todoId = e.target.dataset['id'];
+                fetch('/todos/' + todoId +'/delete', {
+                    method: 'DELETE'
+                })
+                .then(function() {
+                    const item = e.target.parentElement; // parentElement would be an item in the list
+                    item.remove(); // remove the HTML element
+                    document.getElementById('error').className = 'hidden';
+                })
+                .catch(function() {
+                    document.getElementById('error').className = ''; 
+                })
+            }
+
+
+
+
+
+
+
+            // script for the LIST complete checkbox
+            const listCheckboxes = document.querySelectorAll('.check-completed-lists'); 
+            console.log("script: LIST complete checkbox");
+            for (let i= 0; i < listCheckboxes.length; i++) {
+                const checkbox = listCheckboxes[i];
+                console.log(checkbox);
+                checkbox.addEventListener('change', (e)=>(listCheckCompletedHandler(e)));
+            }
+
+            // script for the LIST delete button
+
+            const listDeleteBtns = document.querySelectorAll('.delete-button-lists');
+            for (let i = 0; i < listDeleteBtns.length; i++) {
+                const btn = listDeleteBtns[i];
+                btn.addEventListener('click', (e)=>(listDeleteButtonHandler(e)));
+            }
+
+            // script for the ITEM complete checkbox
+            const itemCheckboxes = document.querySelectorAll('.check-completed-items'); 
+            for (let i= 0; i < itemCheckboxes.length; i++) {
+                const checkbox = itemCheckboxes[i];
+                checkbox.addEventListener('change', (e)=>(itemCheckCompletedHandler(e)));
+            }
+
+            // script for the ITEM delete button
+            const itemDeleteBtns = document.querySelectorAll('.delete-button-items');
+            for (let i = 0; i < itemDeleteBtns.length; i++) {
+                const btn = itemDeleteBtns[i];
+                btn.addEventListener('click', (e)=>(itemDeleteButtonHandler(e)));
+            }
+
+
+
+
+
+            
+            // script for the LIST create form
+            const nameInput = document.getElementById('name');
+            document.getElementById('form-lists').onsubmit = function(e) { 
+                e.preventDefault(); 
+                console.log(e);
+                const name = nameInput.value;
+                nameInput.value = ''; // reset the text box
+
+                fetch('/lists/create', {
+                    method: 'POST',
+                    body: JSON.stringify({ 
+                        'name': name
+                    }),
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(response => response.json())
+                .then(jsonresponse => {
+                    const li = document.createElement('li'); 
+
+                    // list item component 1: checkbox
+                    const checkbox = document.createElement('input');
+                    checkbox.className = 'check-completed-lists';
+                    checkbox.type = 'checkbox';
+                    checkbox.setAttribute('data-id', jsonresponse.id);
+                    checkbox.addEventListener('change', (e)=>(listCheckCompletedHandler(e))); 
+                    li.appendChild(checkbox);
+                    
+                    // list item component 2: name
+                    //const text = document.createTextNode(' ' + jsonresponse.name);
+                    const nameLink = document.createElement('a');
+                    const nameText = document.createTextNode(' ' + jsonresponse.name);
+                    nameLink.appendChild(nameText);
+                    nameLink.href = "/lists/"+jsonresponse.id;
+                    li.appendChild(nameLink);
+
+                    console.log('list item component 2: name:', jsonresponse.name); // TO BE DELETED (COMMENT)
+
+                    // list item component 3: delete button
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.className = 'delete-button-lists';
+                    deleteBtn.setAttribute('data-id', jsonresponse.id);
+                    deleteBtn.innerHTML = '&#10008';
+                    deleteBtn.addEventListener('click', (e)=>(listDeleteButtonHandler(e))); 
+                    li.appendChild(deleteBtn);
+
+                    // after constructing a new list from form submission, append it to the 'lists' list
+                    document.getElementById('lists').appendChild(li);
+                    document.getElementById('error').className = 'hidden'; 
+                })
+                .catch(function() {
+                    document.getElementById('error').className = ''; 
+                })
+            }
+
+            // script for the ITEM create form
+            const descInput = document.getElementById('description'); // object of the HTML form input box
+            document.getElementById('form-items').onsubmit = function(e) { 
+                e.preventDefault(); 
+                console.log(e); // TODO
+                const desc = descInput.value; // 
+                console.log("description ", desc);
+                console.log("list_id ", list_id);
+                descInput.value = ''; // reset the text box
+                fetch('/todos/create', {
+                    method: 'POST',
+                    body: JSON.stringify({ 
+                        'description': desc,
+                        'list-id': document.getElementById('list_id').value
+                    }),
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(response => response.json()) // simplifies syntax
+                .then(jsonresponse => {
+                    const li = document.createElement('li'); // tag names are case insensitive
+                    
+                    // list item component 1: checkbox
+                    const checkbox = document.createElement('input');
+                    checkbox.className = 'check-completed-items';
+                    checkbox.type = 'checkbox';
+                    checkbox.setAttribute('data-id', jsonresponse.id); // since @app.route('/todos/create') returns jsonify(body), and id is in the body
+                    checkbox.addEventListener('change', (e)=>(itemCheckCompletedHandler(e)));
+                    li.appendChild(checkbox);
+                    
+                    // list item component 2: description
+                    const text = document.createTextNode(' ' + jsonresponse.description);
+                    li.appendChild(text);
+
+                    // list item component 3: delete button
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.className = 'delete-button-items';
+                    deleteBtn.setAttribute('data-id', jsonresponse.id);
+                    deleteBtn.innerHTML = '&#10008';
+                    deleteBtn.addEventListener('click', (e)=>(itemDeleteButtonHandler(e)));
+
+                    li.appendChild(deleteBtn);
+
+                    // after constructing an item of the list from form submission, append it to the 'todos' list
+                    document.getElementById('todos').appendChild(li);
+                    document.getElementById('error').className = 'hidden'; 
+                })
+                .catch(function() {
+                    document.getElementById('error').className = ''; 
+                })
+            }
+        </script>
+    </body>
+</html>
